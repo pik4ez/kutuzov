@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>Kutuzov</title>
+	<script>
+		if (
+			!window.File ||
+			!window.FileReader ||
+			!window.Blob
+		) {
+			alert('Your browser incompatible with Kutuzov. No luck.');
+		}
+	</script>
+	<style>
+		#output{width:100%;text-align:center;font-size:24px;height:50px;line-height:50px;}
+	</style>
+</head>
+<body>
+	<input id="file" name="file" type="file" />
+	<div id="output"></div>
+
+	<script>
+		var fileSelectHandler = handleFileSelect;
+		var fileLoadHandler = handleFileLoad;
+		fileLoadHandler.ktzIterator = ktzIterator;
+		fileLoadHandler.ktzDrawer = ktzDrawer;
+		fileSelectHandler.fileLoadHandler = fileLoadHandler;
+
+		document.getElementById('file').addEventListener('change', fileSelectHandler, false);
+
+		function handleFileSelect(ev) {
+			var file = ev.target.files[0]
+
+			if (!file) {
+				console.log('no file selected');
+				return;
+			}
+
+			if (file.type != 'text/plain') {
+				alert('Kutuzov can\'t see anything except old plain text files.');
+				return;
+			}
+
+			var reader = new FileReader();
+
+			// lost in dependencies, undefined here
+			// @fixme make it smile
+			console.log(this.fileLoadHandler);
+
+			reader.onloadend = this.fileLoadHandler;
+			reader.readAsText(file);
+		}
+
+		function handleFileLoad(e) {
+			var container = document.getElementById('output');
+			console.log(this.ktzIterator);
+			var iterator = new this.ktzIterator(this.result.split(' '));
+			var drawer = this.ktzDrawer;
+			drawer.iterator = iterator;
+			drawer.container = container;
+			var interval = setInterval(drawer, 100);
+		}
+
+		function ktzIterator(arr) {
+			this.arr = arr;
+			this.pos = 0;
+			this.len = arr.length;
+
+			this.next = function() {
+				console.log('next, pos ' + this.pos + ', word "' + this.arr[this.pos] + '"');
+
+				if (!this.arr) {
+					return false;
+				}
+
+				while (this.pos < this.len) {
+					var cur = this.arr[this.pos];
+
+					this.pos++;
+
+					if (this.pos == this.len) {
+						return false;
+					}
+
+					if (cur != '') {
+						return cur;
+					}
+				}
+			}
+		}
+
+		function ktzDrawer() {
+			word = this.iterator.next();
+
+			if (word == false) {
+				clearInterval(interval);
+				word = 'the end';
+				console.log('cleared');
+			}
+
+			this.container.textContent = word;
+
+			console.log('tick ' + word)
+		}
+	</script>
+</body>
+</html>
