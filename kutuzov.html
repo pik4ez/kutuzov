@@ -21,13 +21,7 @@
 	<div id="output"></div>
 
 	<script>
-		var fileSelectHandler = handleFileSelect;
-		var fileLoadHandler = handleFileLoad;
-		fileLoadHandler.ktzIterator = ktzIterator;
-		fileLoadHandler.ktzDrawer = ktzDrawer;
-		fileSelectHandler.fileLoadHandler = fileLoadHandler;
-
-		document.getElementById('file').addEventListener('change', fileSelectHandler, false);
+		document.getElementById('file').addEventListener('change', handleFileSelect, false);
 
 		function handleFileSelect(ev) {
 			var file = ev.target.files[0]
@@ -44,21 +38,20 @@
 
 			var reader = new FileReader();
 
-			// lost in dependencies, undefined here
-			// @fixme make it smile
-			console.log(this.fileLoadHandler);
-
-			reader.onloadend = this.fileLoadHandler;
+			reader.onloadend = handleFileLoad;
 			reader.readAsText(file);
 		}
 
-		function handleFileLoad(e) {
-			var container = document.getElementById('output');
-			console.log(this.ktzIterator);
-			var iterator = new this.ktzIterator(this.result.split(' '));
-			var drawer = this.ktzDrawer;
+		function handleFileLoad(ev) {
 			drawer.iterator = iterator;
+			var container = document.getElementById('output');
+
+			// HERE
+			var iterator = new ktzIterator(this.result.split(' '));
+			var drawer = new ktzDrawer;
+
 			drawer.container = container;
+
 			var interval = setInterval(drawer, 100);
 		}
 
