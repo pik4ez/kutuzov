@@ -38,21 +38,23 @@
 
 			var reader = new FileReader();
 
-			reader.onloadend = handleFileLoad;
+			reader.onloadend = function(ev) { handleFileLoad(ev, reader) };
 			reader.readAsText(file);
 		}
 
-		function handleFileLoad(ev) {
-			drawer.iterator = iterator;
+		function handleFileLoad(ev, reader) {
 			var container = document.getElementById('output');
 
 			// HERE
-			var iterator = new ktzIterator(this.result.split(' '));
-			var drawer = new ktzDrawer;
+			var iterator = new ktzIterator(reader.result.split(/\s+/));
+			var drawer = new ktzDrawer(iterator, container);
 
-			drawer.container = container;
-
-			var interval = setInterval(drawer, 100);
+			var interval = setInterval(function () {
+					if (!drawer()) {
+						clearInterval(interval);
+						console.log('cleared');
+					}
+			}, 300);
 		}
 
 		function ktzIterator(arr) {
@@ -61,40 +63,32 @@
 			this.len = arr.length;
 
 			this.next = function() {
-				console.log('next, pos ' + this.pos + ', word "' + this.arr[this.pos] + '"');
-
-				if (!this.arr) {
+				if (this.pos >= this.len) {
 					return false;
 				}
 
-				while (this.pos < this.len) {
-					var cur = this.arr[this.pos];
+				console.log('next, pos ' + this.pos + ', word "' + this.arr[this.pos] + '"');
 
-					this.pos++;
+				this.pos++;
 
-					if (this.pos == this.len) {
-						return false;
-					}
-
-					if (cur != '') {
-						return cur;
-					}
-				}
+				return this.arr[this.pos - 1];
 			}
 		}
 
-		function ktzDrawer() {
-			word = this.iterator.next();
+		function ktzDrawer(iterator, container) {
+			return function () {
+				word = iterator.next();
 
-			if (word == false) {
-				clearInterval(interval);
-				word = 'the end';
-				console.log('cleared');
+				if (word == false) {
+					return false;
+				}
+
+				container.textContent = word;
+
+				console.log('tick ' + word);
+
+				return true;
 			}
-
-			this.container.textContent = word;
-
-			console.log('tick ' + word)
 		}
 	</script>
 </body>
