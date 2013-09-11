@@ -14,15 +14,39 @@
 	</script>
 	<style>
 		#output{width:100%;text-align:center;font-size:24px;height:50px;line-height:50px;}
+		#controls{display:none;}
 	</style>
 </head>
 <body>
 	<input id="file" name="file" type="file" />
 	<div id="output"></div>
+	<div id="controls">
+		<button id="play">&gt; play</button>
+		<button id="pause">|| pause</button>
+	</div>
 
 	<script>
 		document.getElementById('file').addEventListener('change', handleFileSelect, false);
+		document.getElementById('play').addEventListener('click', handlePlayClick, false);
+		document.getElementById('pause').addEventListener('click', handlePauseClick, false);
+		document.body.addEventListener('keypress', handleKeyPress, false);
 
+		// when user presses keyboard key
+		function handleKeyPress(ev) {
+			switch (ev.keyCode) {
+				// space: play/pause
+				case 32:
+					if (ktzState.mode == 'play') {
+						switchMode('pause');
+					} else if (ktzState.mode == 'pause') {
+						switchMode('play');
+					}
+
+					break;
+			}
+		}
+
+		// when user selects file
 		function handleFileSelect(ev) {
 			var file = ev.target.files[0]
 
@@ -42,39 +66,93 @@
 			reader.readAsText(file);
 		}
 
+		// when file load ends
 		function handleFileLoad(ev, reader) {
-			var container = document.getElementById('output');
-
-			// HERE
-			var iterator = new ktzIterator(reader.result.split(/\s+/));
-			var drawer = new ktzDrawer(iterator, container);
-
-			var interval = setInterval(function () {
-					if (!drawer()) {
-						clearInterval(interval);
-						console.log('cleared');
-					}
-			}, 300);
+			ktzState.text = reader.result;
+			switchMode('play');
 		}
 
-		function ktzIterator(arr) {
-			this.arr = arr;
-			this.pos = 0;
-			this.len = arr.length;
+		// start playing loaded text file
+		function play() {
+			var config = new ktzConfig();
+			var container = document.getElementById('output');
+			var iterator = new ktzIterator(ktzState.text.split(/\s+/), 0);
+			var drawer = new ktzDrawer(iterator, container);
 
-			this.next = function() {
-				if (this.pos >= this.len) {
-					return false;
-				}
+			ktzState.interval = setInterval(function () {
+					if (!drawer()) {
+						clearInterval(ktzState.interval);
+						switchMode('select');
+						console.log('cleared');
+					}
+			}, config.timeout);
+		}
 
-				console.log('next, pos ' + this.pos + ', word "' + this.arr[this.pos] + '"');
+		// when user clicks play button
+		function handlePlayClick(ev) {
+			switchMode('play');
+		}
 
-				this.pos++;
+		// when user clicks pause button
+		function handlePauseClick(ev) {
+			switchMode('pause');
+		}
 
-				return this.arr[this.pos - 1];
+		// switch between modes (play, pause, select file etc)
+		function switchMode(mode) {
+			switch(mode) {
+				case 'play':
+					document.getElementById('controls').style.display = 'block';
+					document.getElementById('play').style.display = 'none';
+					document.getElementById('pause').style.display = 'block';
+					play();
+					ktzState.mode = 'play';
+					break;
+				case 'pause':
+					document.getElementById('controls').style.display = 'block';
+					document.getElementById('play').style.display = 'block';
+					document.getElementById('pause').style.display = 'none';
+					clearInterval(ktzState.interval);
+					ktzState.mode = 'pause';
+					break;
+				case 'select':
+					document.getElementById('controls').style.display = 'none';
+					ktzState.mode = 'select';
+					break;
 			}
 		}
 
+		// handles persistent settings
+		function ktzConfig() {
+			this.timeout = 100;
+		}
+
+		// handles session settings (temporary, in-memory storage)
+		function ktzState() {
+		}
+
+		// loops through loaded text and gets the next chunk
+		function ktzIterator(arr) {
+			this.arr = arr;
+			this.len = arr.length;
+
+			if (ktzState.pos == undefined) {
+				ktzState.pos = 0;
+			}
+
+			this.next = function() {
+				if (ktzState.pos >= this.len) {
+					ktzState.pos = 0;
+					return false;
+				}
+
+				ktzState.pos++;
+
+				return this.arr[ktzState.pos - 1];
+			}
+		}
+
+		// fills output container with current chunk of data
 		function ktzDrawer(iterator, container) {
 			return function () {
 				word = iterator.next();
@@ -84,8 +162,6 @@
 				}
 
 				container.textContent = word;
-
-				console.log('tick ' + word);
 
 				return true;
 			}
