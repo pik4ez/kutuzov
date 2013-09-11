@@ -85,7 +85,7 @@
 						switchMode('select');
 						console.log('cleared');
 					}
-			}, config.timeout);
+			}, 60 / config.wpm * 1000);
 		}
 
 		// when user clicks play button
@@ -124,7 +124,8 @@
 
 		// handles persistent settings
 		function ktzConfig() {
-			this.timeout = 100;
+			// words per minute to show
+			this.wpm = 500;
 		}
 
 		// handles session settings (temporary, in-memory storage)
