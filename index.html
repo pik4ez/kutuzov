@@ -72,12 +72,8 @@
 
 		// read settings from ktzState and apply it to player
 		function applySettings() {
-			console.log('apply new settings');
-
 			// apply wpm: restart required if in play mode
 			if (ktzState.mode == 'play') {
-				console.log('apply new wpm in play mode');
-
 				switchMode('pause');
 				switchMode('play');
 			}
@@ -107,7 +103,6 @@
 			var file = ev.target.files[0]
 
 			if (!file) {
-				console.log('no file selected');
 				return;
 			}
 
@@ -116,7 +111,6 @@
 				return;
 			}
 
-			console.log('position reset [file select]');
 			ktzState.pos = 0;
 
 			var reader = new FileReader();
@@ -141,7 +135,6 @@
 					if (!drawer()) {
 						clearInterval(ktzState.interval);
 						switchMode('select');
-						console.log('cleared');
 					}
 			}, 60 / ktzState.wpm * 1000);
 		}
@@ -205,25 +198,17 @@
 			this.len = arr.length;
 
 			if (ktzState.pos == undefined) {
-				console.log('position reset [undefined]');
 				ktzState.pos = 0;
 			}
 
 			this.next = function() {
 				if (ktzState.pos >= this.len) {
 					ktzState.pos = 0;
-					console.log('position reset [length exceeded]');
-					console.log('reached the end');
 					return false;
 				}
 
 				var result = this.arr.slice(ktzState.pos, ktzState.pos + ktzState.chunkSize).join(' ');
-
-				console.log('pos ' + ktzState.pos + ' chunk size ' + ktzState.chunkSize);
-
 				ktzState.pos = ktzState.pos + ktzState.chunkSize;
-
-				console.log('chunk ' + result);
 
 				return result;
 			}
