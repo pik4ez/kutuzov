@@ -13,12 +13,29 @@
 		}
 	</script>
 	<style>
-		#output{width:100%;text-align:center;font-size:24px;height:50px;line-height:50px;}
+		#output{width:100%;text-align:center;font-size:24px;margin:20px 0;}
 		#controls{display:none;}
 	</style>
 </head>
 <body>
 	<input id="file" name="file" type="file" />
+
+	<label for="settings-wpm">words per minute</label>
+	<input id="settings-wpm" name="wpm" type="text" value="500" size="4" maxlength="4" />
+
+	<label for="settings-align">text align</label>
+	<select id="settings-align" name="align">
+		<option value="center">center</option>
+		<option value="left">left</option>
+		<option value="right">right</option>
+	</select>
+
+	<label for="settings-chunk-size">chunk size</label>
+	<input id="settings-chunk-size" name="chunkSize" type="text" value="1" size="1" maxlength="1" />
+
+	<label for="settings-font-size">font size</label>
+	<input id="settings-font-size" name="fontSize" type="text" value="24" size="3" maxlength="3" />
+
 	<div id="output"></div>
 	<div id="controls">
 		<button id="play">&gt; play</button>
@@ -29,7 +46,46 @@
 		document.getElementById('file').addEventListener('change', handleFileSelect, false);
 		document.getElementById('play').addEventListener('click', handlePlayClick, false);
 		document.getElementById('pause').addEventListener('click', handlePauseClick, false);
+
 		document.body.addEventListener('keypress', handleKeyPress, false);
+
+		document.getElementById('settings-wpm').addEventListener('change', handleSettingsChange, false);
+		document.getElementById('settings-align').addEventListener('change', handleSettingsChange, false);
+		document.getElementById('settings-chunk-size').addEventListener('change', handleSettingsChange, false);
+		document.getElementById('settings-font-size').addEventListener('change', handleSettingsChange, false);
+
+		config = new ktzConfig();
+		ktzState.wpm = config.wpm;
+		ktzState.align = config.align;
+		ktzState.chunkSize = config.chunkSize;
+		ktzState.fontSize = config.fontSize;
+
+		// when settings changed
+		function handleSettingsChange(ev) {
+			ktzState.wpm = parseInt(document.getElementById('settings-wpm').value);
+			ktzState.align = document.getElementById('settings-align').value;
+			ktzState.fontSize = parseInt(document.getElementById('settings-font-size').value);
+			ktzState.chunkSize = parseInt(document.getElementById('settings-chunk-size').value);
+
+			applySettings();
+		}
+
+		// read settings from ktzState and apply it to player
+		function applySettings() {
+			console.log('apply new settings');
+
+			// apply wpm: restart required if in play mode
+			if (ktzState.mode == 'play') {
+				console.log('apply new wpm in play mode');
+
+				switchMode('pause');
+				switchMode('play');
+			}
+
+			// apply style settings (font size and text align)
+			document.getElementById('output').style.textAlign = ktzState.align;
+			document.getElementById('output').style.fontSize = ktzState.fontSize.toString() + "px";
+		}
 
 		// when user presses keyboard key
 		function handleKeyPress(ev) {
@@ -60,8 +116,10 @@
 				return;
 			}
 
-			var reader = new FileReader();
+			console.log('position reset [file select]');
+			ktzState.pos = 0;
 
+			var reader = new FileReader();
 			reader.onloadend = function(ev) { handleFileLoad(ev, reader) };
 			reader.readAsText(file);
 		}
@@ -72,7 +130,7 @@
 			switchMode('play');
 		}
 
-		// start playing loaded text file
+		// play loaded text file
 		function play() {
 			var config = new ktzConfig();
 			var container = document.getElementById('output');
@@ -85,7 +143,7 @@
 						switchMode('select');
 						console.log('cleared');
 					}
-			}, 60 / config.wpm * 1000);
+			}, 60 / ktzState.wpm * 1000);
 		}
 
 		// when user clicks play button
@@ -124,8 +182,17 @@
 
 		// handles persistent settings
 		function ktzConfig() {
-			// words per minute to show
+			// play speed in words per minute
 			this.wpm = 500;
+
+			// text align inside container
+			this.align = 'center';
+
+			// font size
+			this.fontSize = 24;
+
+			// chunk size (how many words to be displayed in one frame)
+			this.chunkSize = 1;
 		}
 
 		// handles session settings (temporary, in-memory storage)
@@ -138,18 +205,27 @@
 			this.len = arr.length;
 
 			if (ktzState.pos == undefined) {
+				console.log('position reset [undefined]');
 				ktzState.pos = 0;
 			}
 
 			this.next = function() {
 				if (ktzState.pos >= this.len) {
 					ktzState.pos = 0;
+					console.log('position reset [length exceeded]');
+					console.log('reached the end');
 					return false;
 				}
 
-				ktzState.pos++;
+				var result = this.arr.slice(ktzState.pos, ktzState.pos + ktzState.chunkSize).join(' ');
 
-				return this.arr[ktzState.pos - 1];
+				console.log('pos ' + ktzState.pos + ' chunk size ' + ktzState.chunkSize);
+
+				ktzState.pos = ktzState.pos + ktzState.chunkSize;
+
+				console.log('chunk ' + result);
+
+				return result;
 			}
 		}
 
