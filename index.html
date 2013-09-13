@@ -54,43 +54,72 @@
 		document.getElementById('settings-chunk-size').addEventListener('change', handleSettingsChange, false);
 		document.getElementById('settings-font-size').addEventListener('change', handleSettingsChange, false);
 
-		config = new ktzConfig();
-		ktzState.wpm = config.wpm;
-		ktzState.align = config.align;
-		ktzState.chunkSize = config.chunkSize;
-		ktzState.fontSize = config.fontSize;
+		init();
+
+		// initializes application at startup
+		function init() {
+			var config = new ktzConfig();
+			applySettings(true)
+
+			if(config.get('text')) {
+				var container = document.getElementById('output');
+				var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
+				var drawer = new ktzDrawer(iterator, container);
+
+				drawer();
+			}
+
+			switchMode(config.get('mode'));
+		}
 
 		// when settings changed
 		function handleSettingsChange(ev) {
-			ktzState.wpm = parseInt(document.getElementById('settings-wpm').value);
-			ktzState.align = document.getElementById('settings-align').value;
-			ktzState.fontSize = parseInt(document.getElementById('settings-font-size').value);
-			ktzState.chunkSize = parseInt(document.getElementById('settings-chunk-size').value);
+			var config = new ktzConfig();
+			config.set('wpm', parseInt(document.getElementById('settings-wpm').value));
+			config.set('align', document.getElementById('settings-align').value);
+			config.set('fontSize', parseInt(document.getElementById('settings-font-size').value));
+			config.set('chunkSize', parseInt(document.getElementById('settings-chunk-size').value));
 
-			applySettings();
+			applySettings(true);
 		}
 
-		// read settings from ktzState and apply it to player
-		function applySettings() {
+		// read settings from config and apply it to player
+		function applySettings(updateInputs) {
+			var config = new ktzConfig();
+
 			// apply wpm: restart required if in play mode
-			if (ktzState.mode == 'play') {
+			if (config.get('mode') == 'play') {
 				switchMode('pause');
 				switchMode('play');
 			}
 
 			// apply style settings (font size and text align)
-			document.getElementById('output').style.textAlign = ktzState.align;
-			document.getElementById('output').style.fontSize = ktzState.fontSize.toString() + "px";
+			document.getElementById('output').style.textAlign = config.get('align');
+			document.getElementById('output').style.fontSize = config.get('fontSize').toString() + "px";
+
+			// set appropriate inputs values
+			if (updateInputs) {
+				document.getElementById('settings-wpm').value = config.get('wpm');
+				document.getElementById('settings-font-size').value = config.get('fontSize');
+				document.getElementById('settings-chunk-size').value = config.get('chunkSize');
+				
+				for (var i = 0; i < document.getElementById('settings-align').options.length; i++) {
+					var opt = document.getElementById('settings-align').options[i];
+					opt.selected = (opt.value == config.get('align'));
+				}
+			}
 		}
 
 		// when user presses keyboard key
 		function handleKeyPress(ev) {
+			var config = new ktzConfig();
+
 			switch (ev.keyCode) {
 				// space: play/pause
 				case 32:
-					if (ktzState.mode == 'play') {
+					if (config.get('mode') == 'play') {
 						switchMode('pause');
-					} else if (ktzState.mode == 'pause') {
+					} else if (config.get('mode') == 'pause') {
 						switchMode('play');
 					}
 
@@ -100,6 +129,7 @@
 
 		// when user selects file
 		function handleFileSelect(ev) {
+			var config = new ktzConfig();
 			var file = ev.target.files[0]
 
 			if (!file) {
@@ -111,7 +141,7 @@
 				return;
 			}
 
-			ktzState.pos = 0;
+			config.set('pos', 0);
 
 			var reader = new FileReader();
 			reader.onloadend = function(ev) { handleFileLoad(ev, reader) };
@@ -120,7 +150,9 @@
 
 		// when file load ends
 		function handleFileLoad(ev, reader) {
-			ktzState.text = reader.result;
+			var config = new ktzConfig();
+			// @fixme do not store all the contents in localStorage
+			config.set('text', reader.result);
 			switchMode('play');
 		}
 
@@ -128,15 +160,17 @@
 		function play() {
 			var config = new ktzConfig();
 			var container = document.getElementById('output');
-			var iterator = new ktzIterator(ktzState.text.split(/\s+/), 0);
+			var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
 			var drawer = new ktzDrawer(iterator, container);
 
-			ktzState.interval = setInterval(function () {
+			var interval = setInterval(function () {
 					if (!drawer()) {
-						clearInterval(ktzState.interval);
+						clearInterval(config.get('interval'));
 						switchMode('select');
 					}
-			}, 60 / ktzState.wpm * 1000);
+			}, 60 / config.get('wpm') * 1000);
+
+			config.set('interval', interval);
 		}
 
 		// when user clicks play button
@@ -151,24 +185,26 @@
 
 		// switch between modes (play, pause, select file etc)
 		function switchMode(mode) {
+			var config = new ktzConfig();
+
 			switch(mode) {
 				case 'play':
 					document.getElementById('controls').style.display = 'block';
 					document.getElementById('play').style.display = 'none';
 					document.getElementById('pause').style.display = 'block';
 					play();
-					ktzState.mode = 'play';
+					config.set('mode', 'play');
 					break;
 				case 'pause':
 					document.getElementById('controls').style.display = 'block';
 					document.getElementById('play').style.display = 'block';
 					document.getElementById('pause').style.display = 'none';
-					clearInterval(ktzState.interval);
-					ktzState.mode = 'pause';
+					clearInterval(config.get('interval'));
+					config.set('mode', 'pause');
 					break;
 				case 'select':
 					document.getElementById('controls').style.display = 'none';
-					ktzState.mode = 'select';
+					config.set('mode', 'select');
 					break;
 			}
 		}
@@ -186,29 +222,72 @@
 
 			// chunk size (how many words to be displayed in one frame)
 			this.chunkSize = 1;
+
+			// get variable from application config
+			this.get = function(key) {
+				if(
+					supportsLocalStorage() &&
+					localStorage[key] !== undefined
+				) {
+					return localStorage[key];
+				} else {
+					return this[key];
+				}
+			}
+
+			// store variable in localStorage
+			this.set = function(key, val) {
+				if (!supportsLocalStorage) {
+					return false;
+				}
+
+				localStorage[key] = val;
+			}
+
+			// delete variable from localStorage
+			this.unset = function(key) {
+				if (!supportsLocalStorage) {
+					return false;
+				}
+
+				localStorage.removeItem(key);
+			}
 		}
 
-		// handles session settings (temporary, in-memory storage)
-		function ktzState() {
+		// checks if browser has localStorage support
+		function supportsLocalStorage() {
+			try {
+				return 'localStorage' in window && window['localStorage'] !== null;
+			} catch (e) {
+				return false;
+			}
 		}
 
 		// loops through loaded text and gets the next chunk
 		function ktzIterator(arr) {
 			this.arr = arr;
 			this.len = arr.length;
+			this.config = new ktzConfig();
 
-			if (ktzState.pos == undefined) {
-				ktzState.pos = 0;
+			if (this.config.get('pos')== undefined) {
+				this.config.set('pos', 0);
+				this.config.unset('text');
 			}
 
 			this.next = function() {
-				if (ktzState.pos >= this.len) {
-					ktzState.pos = 0;
+				if (this.config.get('pos') >= this.len) {
+					this.config.set('pos', 0);
+					this.config.unset('text');
 					return false;
 				}
 
-				var result = this.arr.slice(ktzState.pos, ktzState.pos + ktzState.chunkSize).join(' ');
-				ktzState.pos = ktzState.pos + ktzState.chunkSize;
+				var newPos = parseInt(this.config.get('pos')) + parseInt(this.config.get('chunkSize'));
+				var result = this.arr.slice(
+					this.config.get('pos'),
+					newPos
+				).join(' ');
+
+				this.config.set('pos', newPos);
 
 				return result;
 			}
