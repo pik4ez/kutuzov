@@ -68,7 +68,11 @@
 				drawer();
 			}
 
-			switchMode(config.get('mode'));
+			var newMode = 'pause';
+			if (config.get('mode') == 'select') {
+				newMode = 'select';
+			}
+			switchMode(newMode);
 		}
 
 		// when mouse click on output text
