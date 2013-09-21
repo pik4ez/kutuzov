@@ -16,36 +16,37 @@
 	<link rel="stylesheet" href="ktz.css" type="text/css" media="screen" charset="utf-8"/>
 </head>
 <body>
-	<input id="file" name="file" type="file" />
-
-	<label for="settings-wpm">words per minute</label>
-	<input id="settings-wpm" name="wpm" type="text" value="500" size="4" maxlength="4" />
-
-	<label for="settings-align">text align</label>
-	<select id="settings-align" name="align">
-		<option value="center">center</option>
-		<option value="left">left</option>
-		<option value="right">right</option>
-	</select>
-
-	<label for="settings-chunk-size">chunk size</label>
-	<input id="settings-chunk-size" name="chunkSize" type="text" value="1" size="1" maxlength="1" />
-
-	<label for="settings-font-size">font size</label>
-	<input id="settings-font-size" name="fontSize" type="text" value="24" size="3" maxlength="3" />
-
-	<div id="output"></div>
 	<div id="controls">
-		<button id="play">&gt; play</button>
-		<button id="pause">|| pause</button>
+		<input id="file" name="file" type="file" />
+
+		<label for="settings-wpm">words per minute</label>
+		<input id="settings-wpm" name="wpm" type="text" value="500" size="4" maxlength="4" />
+
+		<label for="settings-align">text align</label>
+		<select id="settings-align" name="align">
+			<option value="center">center</option>
+			<option value="left">left</option>
+			<option value="right">right</option>
+		</select>
+
+		<label for="settings-chunk-size">chunk size</label>
+		<input id="settings-chunk-size" name="chunkSize" type="text" value="1" size="1" maxlength="1" />
+
+		<label for="settings-font-size">font size</label>
+		<input id="settings-font-size" name="fontSize" type="text" value="24" size="3" maxlength="3" />
+	</div>
+
+	<div id="container">
+		<div id="output">
+		</div>
 	</div>
 
 	<script>
 		document.getElementById('file').addEventListener('change', handleFileSelect, false);
-		document.getElementById('play').addEventListener('click', handlePlayClick, false);
-		document.getElementById('pause').addEventListener('click', handlePauseClick, false);
 
 		document.body.addEventListener('keypress', handleKeyPress, false);
+
+		document.getElementById('container').addEventListener('click', handleClickOnOutput, false);
 
 		document.getElementById('settings-wpm').addEventListener('change', handleSettingsChange, false);
 		document.getElementById('settings-align').addEventListener('change', handleSettingsChange, false);
@@ -68,6 +69,17 @@
 			}
 
 			switchMode(config.get('mode'));
+		}
+
+		// when mouse click on output text
+		function handleClickOnOutput(ev) {
+			var config = new ktzConfig();
+
+			if (config.get('mode') == 'play') {
+				switchMode('pause');
+			} else if (config.get('mode') == 'pause') {
+				switchMode('play');
+			}
 		}
 
 		// when settings changed
@@ -171,37 +183,23 @@
 			config.set('interval', interval);
 		}
 
-		// when user clicks play button
-		function handlePlayClick(ev) {
-			switchMode('play');
-		}
-
-		// when user clicks pause button
-		function handlePauseClick(ev) {
-			switchMode('pause');
-		}
-
 		// switch between modes (play, pause, select file etc)
 		function switchMode(mode) {
 			var config = new ktzConfig();
 
 			switch(mode) {
 				case 'play':
-					document.getElementById('controls').style.display = 'block';
-					document.getElementById('play').style.display = 'none';
-					document.getElementById('pause').style.display = 'block';
+					document.getElementById('controls').style.display = 'none';
 					play();
 					config.set('mode', 'play');
 					break;
 				case 'pause':
 					document.getElementById('controls').style.display = 'block';
-					document.getElementById('play').style.display = 'block';
-					document.getElementById('pause').style.display = 'none';
 					clearInterval(config.get('interval'));
 					config.set('mode', 'pause');
 					break;
 				case 'select':
-					document.getElementById('controls').style.display = 'none';
+					document.getElementById('controls').style.display = 'block';
 					config.set('mode', 'select');
 					break;
 			}
