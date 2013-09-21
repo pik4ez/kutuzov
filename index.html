@@ -138,6 +138,53 @@
 					}
 
 					break;
+
+				// h, ?: show help
+				case 104:
+				case 63:
+					var msg = "Some help:\n\n" +
+							  "space — play/pause\n" +
+							  "up/down — change speed\n" +
+							  "h or ? — show this help\n" +
+							  "\nClick anywhere to play/pause.";
+
+					alert(msg);
+
+					break;
+
+				// +, =: increase speed
+				case 43:
+				case 61:
+					var newSpeed = parseInt(config.get('wpm')) + parseInt(config.get('wpmStep'));
+					config.set('wpm', newSpeed);
+
+					document.getElementById('settings-wpm').value = newSpeed;
+
+					if (config.get('mode') == 'play') {
+						switchMode('pause');
+						switchMode('play');
+					}
+
+					break;
+
+				// -, _: decrease speed
+				case 45:
+				case 95:
+					var newSpeed = parseInt(config.get('wpm')) - parseInt(config.get('wpmStep'));
+					if (newSpeed < parseInt(config.get('wpmStep'))) {
+						newSpeed = config.get('wpmStep');
+					}
+
+					config.set('wpm', newSpeed);
+
+					document.getElementById('settings-wpm').value = newSpeed;
+
+					if (config.get('mode') == 'play') {
+						switchMode('pause');
+						switchMode('play');
+					}
+
+					break;
 			}
 		}
 
@@ -213,6 +260,9 @@
 		function ktzConfig() {
 			// play speed in words per minute
 			this.wpm = 500;
+
+			// wpm change step
+			this.wpmStep = 20;
 
 			// text align inside container
 			this.align = 'center';
