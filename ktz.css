@@ -6,6 +6,10 @@ html, body {
 	padding: 0;
 }
 
+body {
+	font-family: Ubuntu, sans-serif;
+}
+
 #container {
 	display: -webkit-flexbox;
 	display: -ms-flexbox;
