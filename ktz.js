@@ -1,13 +1,15 @@
-document.getElementById('file').addEventListener('change', handleFileSelect, false);
+function getElemById(id) {
+    return document.getElementById(id);
+}
 
 document.body.addEventListener('keypress', handleKeyPress, false);
 
-document.getElementById('container').addEventListener('click', handleClickOnOutput, false);
-
-document.getElementById('settings-wpm').addEventListener('change', handleSettingsChange, false);
-document.getElementById('settings-align').addEventListener('change', handleSettingsChange, false);
-document.getElementById('settings-chunk-size').addEventListener('change', handleSettingsChange, false);
-document.getElementById('settings-font-size').addEventListener('change', handleSettingsChange, false);
+getElemById('file').addEventListener('change', handleFileSelect, false);
+getElemById('container').addEventListener('click', handleClickOnOutput, false);
+getElemById('settings-wpm').addEventListener('change', handleSettingsChange, false);
+getElemById('settings-align').addEventListener('change', handleSettingsChange, false);
+getElemById('settings-chunk-size').addEventListener('change', handleSettingsChange, false);
+getElemById('settings-font-size').addEventListener('change', handleSettingsChange, false);
 
 init();
 
@@ -17,7 +19,7 @@ function init() {
     applySettings(true)
 
     if(config.get('text')) {
-        var container = document.getElementById('output');
+        var container = getElemById('output');
         var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
         var drawer = new ktzDrawer(iterator, container);
 
@@ -46,10 +48,10 @@ function handleClickOnOutput(ev) {
 // when settings changed
 function handleSettingsChange(ev) {
     var config = new ktzConfig();
-    config.set('wpm', parseInt(document.getElementById('settings-wpm').value));
-    config.set('align', document.getElementById('settings-align').value);
-    config.set('fontSize', parseInt(document.getElementById('settings-font-size').value));
-    config.set('chunkSize', parseInt(document.getElementById('settings-chunk-size').value));
+    config.set('wpm', parseInt(getElemById('settings-wpm').value));
+    config.set('align', getElemById('settings-align').value);
+    config.set('fontSize', parseInt(getElemById('settings-font-size').value));
+    config.set('chunkSize', parseInt(getElemById('settings-chunk-size').value));
 
     applySettings(true);
 }
@@ -65,17 +67,17 @@ function applySettings(updateInputs) {
     }
 
     // apply style settings (font size and text align)
-    document.getElementById('output').style.textAlign = config.get('align');
-    document.getElementById('output').style.fontSize = config.get('fontSize').toString() + "px";
+    getElemById('output').style.textAlign = config.get('align');
+    getElemById('output').style.fontSize = config.get('fontSize').toString() + "px";
 
     // set appropriate inputs values
     if (updateInputs) {
-        document.getElementById('settings-wpm').value = config.get('wpm');
-        document.getElementById('settings-font-size').value = config.get('fontSize');
-        document.getElementById('settings-chunk-size').value = config.get('chunkSize');
+        getElemById('settings-wpm').value = config.get('wpm');
+        getElemById('settings-font-size').value = config.get('fontSize');
+        getElemById('settings-chunk-size').value = config.get('chunkSize');
         
-        for (var i = 0; i < document.getElementById('settings-align').options.length; i++) {
-            var opt = document.getElementById('settings-align').options[i];
+        for (var i = 0; i < getElemById('settings-align').options.length; i++) {
+            var opt = getElemById('settings-align').options[i];
             opt.selected = (opt.value == config.get('align'));
         }
     }
@@ -116,7 +118,7 @@ function handleKeyPress(ev) {
             var newSpeed = parseInt(config.get('wpm')) + parseInt(config.get('wpmStep'));
             config.set('wpm', newSpeed);
 
-            document.getElementById('settings-wpm').value = newSpeed;
+            getElemById('settings-wpm').value = newSpeed;
 
             if (config.get('mode') == 'play') {
                 switchMode('pause');
@@ -135,7 +137,7 @@ function handleKeyPress(ev) {
 
             config.set('wpm', newSpeed);
 
-            document.getElementById('settings-wpm').value = newSpeed;
+            getElemById('settings-wpm').value = newSpeed;
 
             if (config.get('mode') == 'play') {
                 switchMode('pause');
@@ -178,7 +180,7 @@ function handleFileLoad(ev, reader) {
 // play loaded text file
 function play() {
     var config = new ktzConfig();
-    var container = document.getElementById('output');
+    var container = getElemById('output');
     var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
     var drawer = new ktzDrawer(iterator, container);
 
@@ -198,17 +200,17 @@ function switchMode(mode) {
 
     switch(mode) {
         case 'play':
-            document.getElementById('controls').style.display = 'none';
+            getElemById('controls').style.display = 'none';
             play();
             config.set('mode', 'play');
             break;
         case 'pause':
-            document.getElementById('controls').style.display = 'block';
+            getElemById('controls').style.display = 'block';
             clearInterval(config.get('interval'));
             config.set('mode', 'pause');
             break;
         case 'select':
-            document.getElementById('controls').style.display = 'block';
+            getElemById('controls').style.display = 'block';
             config.set('mode', 'select');
             break;
     }
