@@ -6,7 +6,7 @@ html, body {
 	padding: 0;
 }
 
-body {
+body, input, button, select, option {
 	font-family: Ubuntu, sans-serif;
 }
 
@@ -31,5 +31,4 @@ body {
 #controls {
 	position: absolute;
 	top: 0;
-	display: none;
 }

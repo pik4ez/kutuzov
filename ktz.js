@@ -1,157 +1,170 @@
-function getElemById(id) {
-    return document.getElementById(id);
-}
-
-document.body.addEventListener('keypress', handleKeyPress, false);
-
-getElemById('file').addEventListener('change', handleFileSelect, false);
-getElemById('container').addEventListener('click', handleClickOnOutput, false);
-getElemById('settings-wpm').addEventListener('change', handleSettingsChange, false);
-getElemById('settings-align').addEventListener('change', handleSettingsChange, false);
-getElemById('settings-chunk-size').addEventListener('change', handleSettingsChange, false);
-getElemById('settings-font-size').addEventListener('change', handleSettingsChange, false);
-
-init();
+ktz = {}
 
 // initializes application at startup
-function init() {
-    var config = new ktzConfig();
-    applySettings(true)
+ktz.init = function () {
+    ktz.config = new KtzConfig();
 
-    if(config.get('text')) {
-        var container = getElemById('output');
-        var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
-        var drawer = new ktzDrawer(iterator, container);
+    ktz.ui.init();
+    ktz.player = new KtzPlayer(ktz.config);
 
-        drawer();
+    ev.bind('chunk', function (chunk) {
+        if (!ktz.player.playing) {
+            return;
+        }
+
+        ktz.config.set('pos', parseInt(ktz.config.get('pos')) +
+            chunk.split(/\s+/).length);
+    });;
+
+    ev.bind('file_load', function (reader) {
+        // FIXME: do not store all the contents in localStorage
+        ktz.config.set('text', reader.result);
+        ktz.config.set('pos', 0);
+
+        ev.fire('settings_change', ktz.config);
+    });
+
+    ev.bind('increase_speed', function () {
+        var newSpeed = parseInt(ktz.config.get('wpm')) +
+            parseInt(ktz.config.get('wpmStep'));
+        ktz.config.set('wpm', newSpeed);
+
+        ktz.ui.applySettings();
+
+        ev.fire('settings_change', ktz.config);
+    });
+
+    ev.bind('decrease_speed', function () {
+        var newSpeed = parseInt(ktz.config.get('wpm')) -
+            parseInt(ktz.config.get('wpmStep'));
+        if (newSpeed <= 0) {
+            return;
+        }
+
+        ktz.config.set('wpm', newSpeed);
+
+        ktz.ui.applySettings();
+
+        ev.fire('settings_change', ktz.config);
+    });
+}
+
+ktz.ui = {
+    'file': getElementById('file'),
+    'output': getElementById('output'),
+    'container': getElementById('container'),
+    'controls': getElementById('controls'),
+    'settings': {
+        'wpm': getElementById('settings-wpm'),
+        'align': getElementById('settings-align'),
+        'chunkSize': getElementById('settings-chunk-size'),
+        'fontSize': getElementById('settings-font-size')
     }
+}
 
-    var newMode = 'pause';
-    if (config.get('mode') == 'select') {
-        newMode = 'select';
-    }
-    switchMode(newMode);
+ktz.ui.init = function () {
+    var ui = ktz.ui;
+    var handlers = ktz.ui.handlers;
+
+    // FIXME: refactor this
+    addEventListener(ui.file, 'change', handlers.onFileSelect);
+    addEventListener(ui.container, 'click', handlers.onClickOnOutput);
+    addEventListener(ui.settings.wpm, 'change', handlers.onSettingsChange);
+    addEventListener(ui.settings.align, 'change', handlers.onSettingsChange);
+    addEventListener(ui.settings.fontSize, 'change', handlers.onSettingsChange);
+    addEventListener(ui.settings.chunkSize, 'change', handlers.onSettingsChange);
+
+    addEventListener(document.body, 'keypress', handlers.onKeyPress);
+
+    ui.applySettings();
+
+    ev.bind('chunk', handlers.onNewChunk);
+    ev.bind('toggle_mode', handlers.onToggleMode);
+    ev.bind('show_help', handlers.onShowHelp);
+}
+
+ktz.ui.handlers = {}
+
+ktz.ui.handlers.onNewChunk = function (chunk) {
+    ktz.ui.output.textContent = chunk;
 }
 
 // when mouse click on output text
-function handleClickOnOutput(ev) {
-    var config = new ktzConfig();
+ktz.ui.handlers.onClickOnOutput = function () {
+    ev.fire('toggle_mode');
+}
 
-    var mode = config.get('mode');
-    if (mode == 'play') {
-        switchMode('pause');
-    } else {
-        switchMode('play');
-    }
+ktz.ui.handlers.onShowHelp = function () {
+    var msg = "Some help:\n\n" +
+        "space — play/pause\n" +
+        "up/down — change speed\n" +
+        "h or ? — show this help\n" +
+        "\nClick anywhere to play/pause.";
+
+    alert(msg);
 }
 
 // when settings changed
-function handleSettingsChange(ev) {
-    var config = new ktzConfig();
-    config.set('wpm', parseInt(getElemById('settings-wpm').value));
-    config.set('align', getElemById('settings-align').value);
-    config.set('fontSize', parseInt(getElemById('settings-font-size').value));
-    config.set('chunkSize', parseInt(getElemById('settings-chunk-size').value));
+ktz.ui.handlers.onSettingsChange = function () {
+    ktz.config.set('wpm', parseInt(ktz.ui.settings.wpm.value));
+    ktz.config.set('align', ktz.ui.settings.align.value);
+    ktz.config.set('fontSize', parseInt(ktz.ui.settings.fontSize.value));
+    ktz.config.set('chunkSize', parseInt(ktz.ui.settings.chunkSize.value));
 
-    applySettings(true);
+    ktz.ui.applySettings();
+
+    ev.fire('settings_change', ktz.config);
 }
 
 // read settings from config and apply it to player
-function applySettings(updateInputs) {
-    var config = new ktzConfig();
-
-    // apply wpm: restart required if in play mode
-    if (config.get('mode') == 'play') {
-        switchMode('pause');
-        switchMode('play');
-    }
-
+ktz.ui.applySettings = function () {
     // apply style settings (font size and text align)
-    getElemById('output').style.textAlign = config.get('align');
-    getElemById('output').style.fontSize = config.get('fontSize').toString() + "px";
+    ktz.ui.output.style.textAlign = ktz.config.get('align');
+    ktz.ui.output.style.fontSize = ktz.config.get('fontSize').toString() + "px";
 
-    // set appropriate inputs values
-    if (updateInputs) {
-        getElemById('settings-wpm').value = config.get('wpm');
-        getElemById('settings-font-size').value = config.get('fontSize');
-        getElemById('settings-chunk-size').value = config.get('chunkSize');
-        
-        for (var i = 0; i < getElemById('settings-align').options.length; i++) {
-            var opt = getElemById('settings-align').options[i];
-            opt.selected = (opt.value == config.get('align'));
-        }
+    ktz.ui.settings.wpm.value = ktz.config.get('wpm');
+    ktz.ui.settings.fontSize.value = ktz.config.get('fontSize');
+    ktz.ui.settings.chunkSize.value = ktz.config.get('chunkSize');
+
+    for (var i = 0; i < ktz.ui.settings.align.options.length; i++) {
+        var opt = ktz.ui.settings.align.options[i];
+        opt.selected = (opt.value == ktz.config.get('align'));
     }
 }
 
 // when user presses keyboard key
-function handleKeyPress(ev) {
-    var config = new ktzConfig();
-
-    switch (ev.keyCode) {
+ktz.ui.handlers.onKeyPress = function (e) {
+    switch (e.keyCode) {
         // space: play/pause
         case 32:
-            var mode = config.get('mode');
-            if (mode == 'play') {
-                switchMode('pause');
-            } else {
-                switchMode('play');
-            }
+            ev.fire('toggle_mode');
 
             break;
 
         // h, ?: show help
         case 104:
         case 63:
-            var msg = "Some help:\n\n" +
-                      "space — play/pause\n" +
-                      "up/down — change speed\n" +
-                      "h or ? — show this help\n" +
-                      "\nClick anywhere to play/pause.";
-
-            alert(msg);
+            ev.fire('show_help');
 
             break;
 
         // +, =: increase speed
         case 43:
         case 61:
-            var newSpeed = parseInt(config.get('wpm')) + parseInt(config.get('wpmStep'));
-            config.set('wpm', newSpeed);
-
-            getElemById('settings-wpm').value = newSpeed;
-
-            if (config.get('mode') == 'play') {
-                switchMode('pause');
-                switchMode('play');
-            }
-
+            ev.fire('increase_speed');
             break;
 
         // -, _: decrease speed
         case 45:
         case 95:
-            var newSpeed = parseInt(config.get('wpm')) - parseInt(config.get('wpmStep'));
-            if (newSpeed < parseInt(config.get('wpmStep'))) {
-                newSpeed = config.get('wpmStep');
-            }
-
-            config.set('wpm', newSpeed);
-
-            getElemById('settings-wpm').value = newSpeed;
-
-            if (config.get('mode') == 'play') {
-                switchMode('pause');
-                switchMode('play');
-            }
-
+            ev.fire('decrease_speed');
             break;
     }
 }
 
 // when user selects file
-function handleFileSelect(ev) {
-    var config = new ktzConfig();
-    var file = ev.target.files[0]
+ktz.ui.handlers.onFileSelect = function (e) {
+    var file = e.target.files[0]
 
     if (!file) {
         return;
@@ -162,62 +175,27 @@ function handleFileSelect(ev) {
         return;
     }
 
-    config.set('pos', 0);
-
     var reader = new FileReader();
-    reader.onloadend = function(ev) { handleFileLoad(ev, reader) };
+    reader.onloadend = function(e) { ktz.ui.handlers.onFileLoad(e, reader) };
     reader.readAsText(file);
 }
 
 // when file load ends
-function handleFileLoad(ev, reader) {
-    var config = new ktzConfig();
-    // @fixme do not store all the contents in localStorage
-    config.set('text', reader.result);
-    switchMode('play');
-}
-
-// play loaded text file
-function play() {
-    var config = new ktzConfig();
-    var container = getElemById('output');
-    var iterator = new ktzIterator(config.get('text').split(/\s+/), 0);
-    var drawer = new ktzDrawer(iterator, container);
-
-    var interval = setInterval(function () {
-            if (!drawer()) {
-                clearInterval(config.get('interval'));
-                switchMode('select');
-            }
-    }, 60 / config.get('wpm') * 1000);
-
-    config.set('interval', interval);
+ktz.ui.handlers.onFileLoad = function (e, reader) {
+    ev.fire('file_load', reader);
 }
 
 // switch between modes (play, pause, select file etc)
-function switchMode(mode) {
-    var config = new ktzConfig();
-
-    switch(mode) {
-        case 'play':
-            getElemById('controls').style.display = 'none';
-            play();
-            config.set('mode', 'play');
-            break;
-        case 'pause':
-            getElemById('controls').style.display = 'block';
-            clearInterval(config.get('interval'));
-            config.set('mode', 'pause');
-            break;
-        case 'select':
-            getElemById('controls').style.display = 'block';
-            config.set('mode', 'select');
-            break;
+ktz.ui.handlers.onToggleMode = function () {
+    if (ktz.ui.controls.style.display == 'none') {
+        ktz.ui.controls.style.display = 'block';
+    } else {
+        ktz.ui.controls.style.display = 'none';
     }
 }
 
 // handles persistent settings
-function ktzConfig() {
+function KtzConfig() {
     // play speed in words per minute
     this.wpm = 500;
 
@@ -264,59 +242,103 @@ function ktzConfig() {
 
         localStorage.removeItem(key);
     }
-}
 
-// checks if browser has localStorage support
-function supportsLocalStorage() {
-    try {
-        return 'localStorage' in window && window['localStorage'] !== null;
-    } catch (e) {
-        return false;
+    // checks if browser has localStorage support
+    function supportsLocalStorage() {
+        try {
+            return 'localStorage' in window && window['localStorage'] !== null;
+        } catch (e) {
+            return false;
+        }
     }
 }
 
 // loops through loaded text and gets the next chunk
-function ktzIterator(arr) {
-    this.arr = arr;
-    this.len = arr.length;
-    this.config = new ktzConfig();
+function KtzIterator(arr, initPos, chunkSize) {
+    var that = this;
 
-    if (this.config.get('pos')== undefined) {
-        this.config.set('pos', 0);
-        this.config.unset('text');
-    }
+    this.pos = parseInt(initPos);
+    this.arr = arr.slice(this.pos);
+    this.chunkSize = parseInt(chunkSize);
 
     this.next = function() {
-        if (this.config.get('pos') >= this.len) {
-            this.config.set('pos', 0);
-            this.config.unset('text');
-            return false;
-        }
+        that.pos = that.pos + that.chunkSize;
+        return this.arr.splice(that.chunkSize, that.chunkSize).join(' ');
+    }
 
-        var newPos = parseInt(this.config.get('pos')) + parseInt(this.config.get('chunkSize'));
-        var result = this.arr.slice(
-            this.config.get('pos'),
-            newPos
-        ).join(' ');
-
-        this.config.set('pos', newPos);
-
-        return result;
+    this.current = function () {
+        return that.arr.slice(0, that.chunkSize).join(' ');
     }
 }
 
-// fills output container with current chunk of data
-function ktzDrawer(iterator, container) {
-    return function () {
-        word = iterator.next();
+// play loaded text file
+function KtzPlayer(config) {
+    var that = this;
 
-        if (word == false) {
-            return false;
+    this.playing = false;
+    this.interval = null;
+
+    this.play = function () {
+        that.playing = true;
+        that.interval = setInterval(function () {
+            var chunk = that.iterator.next();
+            if (!chunk) {
+                that.stop();
+            }
+
+            ev.fire('chunk', chunk);
+        }, 60 / that.wpm * 1000);
+    }
+
+    this.stop = function () {
+        that.playing = false;
+        clearInterval(that.interval);
+    }
+
+    this.init_from_config = function (config) {
+        that.wpm = config.get('wpm');
+        that.pos = config.get('pos');
+        that.chunkSize = config.get('chunkSize');
+        that.text = config.get('text');
+        if (that.text) {
+            that.iterator = new KtzIterator(that.text.split(/\s+/),
+                that.pos, that.chunkSize);
+        } else {
+            that.iterator = new KtzIterator([], 0, 0);
         }
 
-        container.textContent = word;
-
-        return true;
+        ev.fire('chunk', this.iterator.current());
     }
+
+    this.init_from_config(config);
+
+    ev.bind('settings_change', function (config) {
+        that.init_from_config(config);
+        if (that.playing) {
+            that.stop();
+            that.play();
+        }
+    });
+
+    ev.bind('toggle_mode', function () {
+        if (that.playing) {
+            that.stop();
+        } else {
+            that.play();
+        }
+    });
 }
 
+function getElementById(id) {
+    return document.getElementById(id);
+}
+
+function addEventListener(elem, ev, callback) {
+    return elem.addEventListener(ev, callback, true);
+}
+
+function callback(context, fun) {
+    return function() {
+        return fun.apply(context, arguments);
+    }
+}
