@@ -6,6 +6,10 @@ html, body {
 	padding: 0;
 }
 
+body, input, button, select, option {
+	font-family: Ubuntu, sans-serif;
+}
+
 #container {
 	display: -webkit-flexbox;
 	display: -ms-flexbox;
@@ -27,5 +31,4 @@ html, body {
 #controls {
 	position: absolute;
 	top: 0;
-	display: none;
 }
